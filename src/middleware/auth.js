@@ -7,6 +7,7 @@ export const AUTH_COOKIE_NAME = 'cfsm_auth';
 // 注意：它是全员共享的静态值，只能当作降噪标记，不能当作访问凭证。
 export const UA_COOKIE_NAME = 'cfsm_ua';
 export const AUTH_COKIE_MAX_AGE = 604800;
+export const AUTH_COOKIE_MAX_AGE = 604800;
 // 登录 token 有效期 5 分钟：无操作 5 分钟前端自动退出，后端 token 同样过期；
 // 有活动时前端每 4 分钟调用 refresh 滑动续期。UA 标记 cookie 仍用 7 天，避免误改上游测试。
 export const AUTH_TOKEN_MAX_AGE = 300;
