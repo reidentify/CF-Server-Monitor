@@ -595,7 +595,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick, inject } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TerminalHeader from '../../components/TerminalHeader.vue'
 import Footer from '../../components/Footer.vue'
@@ -1279,7 +1279,7 @@ const handleLogin = async () => {
 
   const result = await login(loginForm.value.username, loginForm.value.password, turnstileToken.value, selectedApiIndex.value)
   if (!result.error) {
-    isLoggedIn.value = true
+    isLoggedIn.value = true; idleStartWatch()
     syncApiIndexQuery()
     clearTurnstile()
     turnstileVerified.value = hasSharedTurnstileVerified()
@@ -1297,7 +1297,7 @@ const handleLogin = async () => {
   loginLoading.value = false
 }
 
-const logout = async () => {
+/* 5 分钟无操作自动退出：监听鼠标/键盘/触摸/滚动，5 分钟无活动即退出并回到登录页。后端 JWT 有效期同样为 5 分钟；有活动时每 4 分钟调用 refresh 滑动续期，这样一直操作不会被踢出，停下 5 分钟后 token 过期 + 前端退出，必须重新登录。 */ const IDLE_TIMEOUT_MS = 5 * 60 * 1000; const IDLE_REFRESH_MS = 4 * 60 * 1000; let idleTimer = null; let idleRefreshTimer = null; let idleLastActivityAt = 0; const idleActivityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'wheel']; const idleResetTimer = () => { idleLastActivityAt = Date.now(); if (idleTimer) clearTimeout(idleTimer); idleTimer = setTimeout(() => { idleLogout() }, IDLE_TIMEOUT_MS) }; const idleOnActivity = () => { if (isLoggedIn.value) idleResetTimer() }; const idleLogout = async () => { idleStopWatch(); try { await adminApiForSite({ action: 'logout' }) } catch (_) {}; apiLogout(); isLoggedIn.value = false; window.location.reload() }; const idleStopWatch = () => { if (idleTimer) { clearTimeout(idleTimer); idleTimer = null } if (idleRefreshTimer) { clearInterval(idleRefreshTimer); idleRefreshTimer = null } idleActivityEvents.forEach((e) => window.removeEventListener(e, idleOnActivity, true)) }; const idleStartWatch = () => { idleStopWatch(); idleLastActivityAt = Date.now(); idleActivityEvents.forEach((e) => window.addEventListener(e, idleOnActivity, true)); idleResetTimer(); idleRefreshTimer = setInterval(async () => { if (!isLoggedIn.value) return; if (Date.now() - idleLastActivityAt >= IDLE_TIMEOUT_MS) return; try { const r = await adminApiForSite({ action: 'refresh' }); if (r && r.data && r.data.token) localStorage.setItem(STORAGE.JWT_TOKEN, r.data.token) } catch (_) {} }, IDLE_REFRESH_MS) }; const logout = async () => { idleStopWatch() idleStopWatch()
   try {
     await adminApiForSite({ action: 'logout' })
   } catch (_) {
@@ -1318,7 +1318,7 @@ const checkLoginStatus = () => {
 const initAdmin = async () => {
   const hasCreds = checkLoginStatus()
   if (hasCreds) {
-    isLoggedIn.value = true
+    isLoggedIn.value = true; idleStartWatch()
     syncApiIndexQuery()
     const savedTurnstileToken = localStorage.getItem(STORAGE.TURNSTILE_TOKEN)
     if (savedTurnstileToken) {
@@ -2647,4 +2647,4 @@ watch(() => route.query.apiIndex, async (value) => {
 onMounted(() => {
   initAdmin()
 })
-</script>
+onBeforeUnmount(() => { idleStopWatch() }) </script>
