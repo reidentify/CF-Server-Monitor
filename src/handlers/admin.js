@@ -546,6 +546,16 @@ function handleLogoutAction({ request }) {
     buildClearThemePreviewAuthCookie(request)
   ]);
 }
+async function handleRefreshAction({ request, env, sys }) {
+  const token = await generateToken(env, sys);
+  return createSuccessResponseWithCookies({
+    success: true,
+    token
+  }, [
+    buildAuthCookie(request, token),
+    buildUaCookie(request, sys?.ua)
+    ]);
+}
 
 function handleClearThemePreviewAuthAction({ request }) {
   return createSuccessResponseWithCookies({
@@ -765,7 +775,8 @@ async function handleSendTestNotificationAction({ data }) {
 }
 
 const AUTHENTICATED_ADMIN_ACTION_HANDLERS = {
-  get_settings: handleGetSettingsAction,
+  
+  get_settings: handleGetSettingsAction,refresh: handleRefreshAction,
   start_theme_preview: handleStartThemePreviewAction,
   save_theme_options: handleSaveThemeOptionsAction,
   list: handleListAction,
